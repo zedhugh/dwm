@@ -232,6 +232,7 @@ static void resizerequest(XEvent *e);
 static void restack(Monitor *m);
 static void run(void);
 static void runautostart(void);
+static void raiseorrun(const Arg *arg);
 static void scan(void);
 static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
@@ -1820,6 +1821,33 @@ runautostart(void)
 
 	free(pathpfx);
 	free(path);
+}
+
+void
+raiseorrun(const Arg *arg)
+{
+	char *class = ((char **)arg->v)[4];
+	Arg a = { .ui = ~0 };
+	Monitor *mon;
+	Client *c;
+	XClassHint hint = { NULL, NULL };
+	/* Try to find the client */
+	for (mon = mons; mon; mon = mon->next) {
+		for (c = mon->clients; c; c = c->next) {
+			XGetClassHint(dpy, c->win, &hint);
+			if (hint.res_class && !strcmp(class, hint.res_class)) {
+				if (!strcmp(c->name, scratchpadname)) continue;
+				selmon = mon;
+				a.ui = c->tags;
+				view(&a);
+				focus(c);
+				XRaiseWindow(dpy, c->win);
+				return;
+			}
+		}
+	}
+	/* Client not found, spawn it */
+	spawn(arg);
 }
 
 void
